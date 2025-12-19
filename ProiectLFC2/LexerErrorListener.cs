@@ -2,25 +2,27 @@
 using System;
 using System.IO;
 
-public class LexerErrorListener : IAntlrErrorListener<int>
+namespace ProiectLFC2
 {
-    private const string ErrorFilePath = "compiler_errors.txt";
-
-    public void SyntaxError(TextWriter output, IRecognizer recognizer, int offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
+    public class LexerErrorListener : IAntlrErrorListener<int>
     {
-        // Aici ajungem doar pentru erori fundamentale, când Lexerul nu știe ce să facă cu un caracter
-        // și nu s-a potrivit cu nicio regulă (nici măcar cu ERROR_TOKEN din .g4).
+        private const string ErrorFilePath = "compiler_errors.txt";
 
-        string errorMessage = $"Eroare Lexicală Critică (L{line}:{charPositionInLine}): {msg}";
+        public void SyntaxError(IRecognizer recognizer, int offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
+        {
+            // Aici ajungem doar pentru erori fundamentale, când Lexerul nu știe ce să facă cu un caracter
 
-        Console.WriteLine(errorMessage);
-        try
-        {
-            File.AppendAllText(ErrorFilePath, errorMessage + Environment.NewLine);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Nu s-a putut scrie în fișierul de erori: " + ex.Message);
+            string errorMessage = $"Eroare lexicala critica (L{line}:{charPositionInLine}): {msg}";
+
+            Console.WriteLine(errorMessage);
+            try
+            {
+                File.AppendAllText(ErrorFilePath, errorMessage + Environment.NewLine);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Nu s-a putut scrie în fisierul de erori: " + ex.Message);
+            }
         }
     }
 }

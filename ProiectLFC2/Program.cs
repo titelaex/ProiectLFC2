@@ -1,86 +1,116 @@
 ﻿using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
 using System;
 using System.IO;
 using System.Text;
 
-public class Program
+namespace ProiectLFC2
 {
-    private const string SourceFilePath = "source.minilang";
-    private const string TokensOutputFilePath = "token_list.txt";
-    private const string ErrorFilePath = "compiler_errors.txt";
 
-    public static void Main(string[] args)
+    public class Program
     {
-        try
+        private const string SourceFilePath = "source.minilang";
+        private const string TokensOutputFilePath = "token_list.txt";
+        private const string ErrorFilePath = "compiler_errors.txt";
+        private const string GlobalVarsFilePath = "global_variables.txt";
+        private const string FunctionsFilePath = "functions.txt";
+
+        public static void Main(string[] args)
         {
-            // Curățăm fișierul de erori la fiecare rulare
-            if (File.Exists(ErrorFilePath)) File.WriteAllText(ErrorFilePath, string.Empty);
-
-            string sourceCode = File.ReadAllText(SourceFilePath);
-
-            // --- ANALIZA LEXICALĂ ---
-            AntlrInputStream inputStream = new AntlrInputStream(sourceCode);
-            GrammarLexer lexer = new GrammarLexer(inputStream);
-            
-            // Aatașăm listener-ul corectat
-            lexer.RemoveErrorListeners();
-            lexer.AddErrorListener(new LexerErrorListener());
-
-            CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-            tokenStream.Fill(); // Forțăm încărcarea tuturor token-urilor
-
-            // Procesăm token-urile pentru a salva lista și a găsi erorile specifice
-            ProcessTokens(tokenStream);
-
-            // --- ANALIZA SINTACTICĂ (Persoana 2) ---
-            GrammarParser parser = new GrammarParser(tokenStream);
-            // ... restul logicii pentru parser
-             Console.WriteLine("Compilare terminată.");
-        }
-        catch (FileNotFoundException)
-        {
-            Console.WriteLine($"Fișierul '{SourceFilePath}' nu există.");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Eroare: " + ex.Message);
-        }
-    }
-
-    private static void ProcessTokens(CommonTokenStream tokenStream)
-    {
-        StringBuilder tokenListOutput = new StringBuilder();
-
-        foreach (var token in tokenStream.GetTokens())
-        {
-            // 1. Gestionarea Erorilor Lexicale Specifice (definite în .g4)
-            if (token.Type == GrammarLexer.ERROR_TOKEN)
+            try
             {
-                ReportError(token.Line, $"Caracter nepermis: '{token.Text}'");
-            }
 
-            // 2. Salvarea în lista de token-uri (doar cele valide, ignorând EOF)
-            if (token.Type != GrammarLexer.Eof && token.Channel == Lexer.DefaultTokenChannel)
-            {
-                string tokenName = GrammarLexer.DefaultVocabulary.GetSymbolicName(token.Type);
-                // Dacă e unul din token-urile noastre de eroare, îl marcăm ca ERROR în lista de output
-                if (token.Type == GrammarLexer.ERROR_TOKEN)
+                File.WriteAllText(ErrorFilePath, string.Empty);
+
+                if (!File.Exists(SourceFilePath))
                 {
-                    tokenName = "ERROR";
+                    Console.WriteLine($"Fisierul '{SourceFilePath}' nu exista");
+                    return;
                 }
-                
-                tokenListOutput.AppendLine($"<{tokenName}, \"{token.Text}\", {token.Line}>");
+
+                string sourceCode = File.ReadAllText(SourceFilePath);
+
+                // ANALIZA LEXICALA
+                AntlrInputStream inputStream = new AntlrInputStream(sourceCode);
+                GrammarLexer lexer = new GrammarLexer(inputStream);
+                lexer.RemoveErrorListeners();
+                lexer.AddErrorListener(new LexerErrorListener());
+
+                CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+                tokenStream.Fill();
+
+                ProcessTokens(tokenStream); // Salveaza tokenii
+
+                // ANALIZA SINTACTICA
+                GrammarParser parser = new GrammarParser(tokenStream);
+
+                parser.RemoveErrorListeners();
+                parser.AddErrorListener(new ParserErrorListener());
+
+                var tree = parser.program();
+
+                SemanticVisitor visitor = new SemanticVisitor();
+                visitor.Visit(tree);
+
+                // GENERARE RAPOARTE
+
+                // Erori 
+                if (visitor.SemanticErrors.Count > 0)
+                {
+                    File.AppendAllLines(ErrorFilePath, visitor.SemanticErrors);
+                    Console.WriteLine($"Au fost gasite {visitor.SemanticErrors.Count} erori semantice. Verifica {ErrorFilePath}");
+                }
+
+                // Variabile Globale
+                StringBuilder globalSb = new StringBuilder();
+                foreach (var v in visitor.GlobalVariables)
+                {
+                    globalSb.AppendLine($"Nume: {v.Name}, Tip: {v.Type}, Valoare: {v.Value}, Const: {v.IsConst}");
+                }
+                File.WriteAllText(GlobalVarsFilePath, globalSb.ToString());
+
+                // Functii
+                StringBuilder funcSb = new StringBuilder();
+                foreach (var f in visitor.Functions)
+                {
+                    funcSb.AppendLine($"Functie: {f.Name} (Tip: {(f.IsMain ? "Main" : "Non-Main")}, Recursiva: {f.IsRecursive})");
+                    funcSb.AppendLine($"  Return: {f.ReturnType}");
+                    funcSb.AppendLine($"  Parametri: {string.Join(", ", f.Parameters)}");
+                    funcSb.AppendLine("  Variabile Locale:");
+                    foreach (var l in f.LocalVariables)
+                    {
+                        funcSb.AppendLine($"    - {l.Type} {l.Name} (= {l.Value})");
+                    }
+                    funcSb.AppendLine("  Structuri Control:");
+                    foreach (var c in f.ControlStructures)
+                    {
+                        funcSb.AppendLine($"    - {c}");
+                    }
+                    funcSb.AppendLine("------------------------------------------------");
+                }
+                File.WriteAllText(FunctionsFilePath, funcSb.ToString());
+
+                Console.WriteLine("Analiza completa. Fisiere generate: token_list.txt, global_variables.txt, functions.txt");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Eroare critica: " + ex.Message);
             }
         }
 
-        File.WriteAllText(TokensOutputFilePath, tokenListOutput.ToString());
-        Console.WriteLine($"Lista de unități lexicale salvată în {TokensOutputFilePath}");
-    }
-
-    private static void ReportError(int line, string message)
-    {
-        string fullMessage = $"Eroare Lexicală (L{line}): {message}";
-        Console.WriteLine(fullMessage);
-        File.AppendAllText(ErrorFilePath, fullMessage + Environment.NewLine);
+        private static void ProcessTokens(CommonTokenStream tokenStream)
+        {
+            StringBuilder tokenListOutput = new StringBuilder();
+            foreach (var token in tokenStream.GetTokens())
+            {
+                if (token.Type != GrammarLexer.Eof && token.Channel == Lexer.DefaultTokenChannel)
+                {
+                    string tokenName = GrammarLexer.DefaultVocabulary.GetSymbolicName(token.Type);
+                    if (token.Type == GrammarLexer.ERROR_TOKEN) tokenName = "ERROR";
+                    tokenListOutput.AppendLine($"<{tokenName}, \"{token.Text}\", {token.Line}>");
+                }
+            }
+            File.WriteAllText(TokensOutputFilePath, tokenListOutput.ToString());
+        }
     }
 }
