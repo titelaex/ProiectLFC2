@@ -231,6 +231,45 @@ public class SemanticVisitor : GrammarBaseVisitor<object>
             return base.VisitCallStatement(context);
         }
 
+        public override object VisitReturnStatement([NotNull] GrammarParser.ReturnStatementContext context)
+        {
+            if (currentFunction == null)
+            {
+                AddError(context.Start.Line, "Instructiunea 'return' folosita in afara unei functii.");
+                return null;
+            }
+
+            string returnType = currentFunction.ReturnType;
+            bool hasExpression = context.expression() != null;
+
+            if (returnType == "void")
+            {
+                if (hasExpression)
+                {
+                    AddError(context.Start.Line, $"Functia '{currentFunction.Name}' este de tip void si nu poate returna o valoare.");
+                }
+            }
+
+            else
+            {
+                if (!hasExpression)
+                {
+                    AddError(context.Start.Line, $"Functia '{currentFunction.Name}' trebuie sa returneze o valoare de tip '{returnType}'.");
+                }
+                else
+                {
+                    string exprType = GetExpressionType(context.expression());
+                    if (!AreTypesCompatible(returnType, exprType))
+                    {
+                        AddError(context.Start.Line, $"Tip returnat incompatibil. Asteptat: '{returnType}', Gasit: '{exprType}'.");
+                    }
+                }
+            }
+
+            return base.VisitReturnStatement(context);
+        }
+
+
         public override object VisitIfStatement([NotNull] GrammarParser.IfStatementContext context)
     {
         if (currentFunction != null) currentFunction.ControlStructures.Add($"if (linia {context.Start.Line})");
@@ -247,29 +286,6 @@ public class SemanticVisitor : GrammarBaseVisitor<object>
     {
         if (currentFunction != null) currentFunction.ControlStructures.Add($"for (linia {context.Start.Line})");
         return base.VisitForStatement(context);
-    }
-
-
-    private void AddError(int line, string msg)
-    {
-        SemanticErrors.Add($"Eroare Semantica (L{line}): {msg}");
-    }
-
-    private VariableInfo GetVariable(string name)
-    {
-        if (currentLocalScope != null && currentLocalScope.ContainsKey(name))
-            return currentLocalScope[name];
-        if (globalScope.ContainsKey(name))
-            return globalScope[name];
-        return null;
-    }
-
-    private void CheckTypeCompatibility(int line, string targetType, GrammarParser.InitialValueContext val)
-    {
-        if (val.STRING_LITERAL() != null && targetType != "string")
-            AddError(line, $"Nu se poate initializa tipul '{targetType}' cu un string");
-        if (val.NUMBER() != null && targetType == "string")
-            AddError(line, $"Nu se poate initializa tipul 'string' cu un numar");
     }
 
         private string GetExpressionType(GrammarParser.ExpressionContext context)
@@ -361,44 +377,7 @@ public class SemanticVisitor : GrammarBaseVisitor<object>
 
             return "unknown";
         }
-        public override object VisitReturnStatement([NotNull] GrammarParser.ReturnStatementContext context)
-        {
-            if (currentFunction == null)
-            {
-                AddError(context.Start.Line, "Instructiunea 'return' folosita in afara unei functii.");
-                return null;
-            }
-
-            string returnType = currentFunction.ReturnType;
-            bool hasExpression = context.expression() != null;
-
-            if (returnType == "void")
-            {
-                if (hasExpression)
-                {
-                    AddError(context.Start.Line, $"Functia '{currentFunction.Name}' este de tip void si nu poate returna o valoare.");
-                }
-            }
-
-            else
-            {
-                if (!hasExpression)
-                {
-                    AddError(context.Start.Line, $"Functia '{currentFunction.Name}' trebuie sa returneze o valoare de tip '{returnType}'.");
-                }
-                else
-                {
-                    string exprType = GetExpressionType(context.expression());
-                    if (!AreTypesCompatible(returnType, exprType))
-                    {
-                        AddError(context.Start.Line, $"Tip returnat incompatibil. Asteptat: '{returnType}', Gasit: '{exprType}'.");
-                    }
-                }
-            }
-
-            return base.VisitReturnStatement(context);
-        }
-
+      
 
         private bool AreTypesCompatible(string target, string source)
         {
@@ -415,5 +394,31 @@ public class SemanticVisitor : GrammarBaseVisitor<object>
 
             return false;
         }
+
+
+        private void AddError(int line, string msg)
+        {
+            SemanticErrors.Add($"Eroare Semantica (L{line}): {msg}");
+        }
+
+        private VariableInfo GetVariable(string name)
+        {
+            if (currentLocalScope != null && currentLocalScope.ContainsKey(name))
+                return currentLocalScope[name];
+            if (globalScope.ContainsKey(name))
+                return globalScope[name];
+            return null;
+        }
+
+
+
+        private void CheckTypeCompatibility(int line, string targetType, GrammarParser.InitialValueContext val)
+        {
+            if (val.STRING_LITERAL() != null && targetType != "string")
+                AddError(line, $"Nu se poate initializa tipul '{targetType}' cu un string");
+            if (val.NUMBER() != null && targetType == "string")
+                AddError(line, $"Nu se poate initializa tipul 'string' cu un numar");
+        }
+
     }
 }

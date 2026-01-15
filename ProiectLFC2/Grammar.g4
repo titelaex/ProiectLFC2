@@ -135,7 +135,7 @@ MUL     : '*';
 DIV     : '/';
 MOD     : '%';
 
-// Operatori Relaționali 
+// Operatori Relationali 
 LE      : '<=';
 GE      : '>=';
 EQ      : '==';
@@ -178,19 +178,17 @@ NUMBER
     : DIGIT+ ('.' DIGIT+)? (('e' | 'E') ('+' | '-')? DIGIT+)?
     ;
 
-// Literali (Șiruri de caractere) 
+// Literali (Siruri de caractere) 
 STRING_LITERAL
     : '"' ( ~["\r\n] )* '"' 
     ;
 
-// --- GESTIONAREA ERORILOR LEXICALE SPECIFICE ---
-
-// Eroare: Șir de caractere neînchis și pe mai multe rânduri 
+// Eroare: Sir de caractere neinchis si pe mai multe randuri 
 UNTERMINATED_STRING 
     : '"' ( ~["\r\n] )* -> type(ERROR_TOKEN)
     ;
-    
-// Spații albe și comentarii (Neglijarea lor)
+
+// Spatii albe si comentarii (Neglijarea lor)
 WHITESPACE : [ \t\n\r]+ -> skip;
 
 // Comentarii de tip linie 
