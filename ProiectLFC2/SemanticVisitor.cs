@@ -165,43 +165,39 @@ public class SemanticVisitor : GrammarBaseVisitor<object>
         return base.VisitAssignmentStatement(context);
     }
 
-    public override object VisitCallStatement([NotNull] GrammarParser.CallStatementContext context)
-    {
-        string funcName = context.ID().GetText();
-
-        if (!definedFunctions.ContainsKey(funcName))
+        public override object VisitCallStatement([NotNull] GrammarParser.CallStatementContext context)
         {
-
+            string funcName = context.ID().GetText();
             if (funcName == "main")
             {
-                AddError(context.Start.Line, "Functia 'main' nu poate fi apelata explicit");
+                AddError(context.Start.Line, "Functia 'main' nu poate fi apelata explicit.");
+                return base.VisitCallStatement(context); 
             }
-            else if (!definedFunctions.ContainsKey(funcName))
-            {
-                AddError(context.Start.Line, $"Functia '{funcName}' nu este definita (sau este definita dupa apel)");
-            }
-            else
-            {
-                var funcDef = definedFunctions[funcName];
-                int paramCount = funcDef.Parameters.Count;
-                int argCount = context.expressionList() != null ? context.expressionList().expression().Length : 0;
 
-                if (paramCount != argCount)
-                {
-                    AddError(context.Start.Line, $"Functia '{funcName}' asteapta {paramCount} argumente, dar a primit {argCount}");
-                }
+            if (!definedFunctions.ContainsKey(funcName))
+            {
+                AddError(context.Start.Line, $"Functia '{funcName}' nu este definita (sau este definita dupa apel).");
+                return base.VisitCallStatement(context); 
             }
+
+            var funcDef = definedFunctions[funcName];
+            int paramCount = funcDef.Parameters.Count;
+            int argCount = context.expressionList() != null ? context.expressionList().expression().Length : 0;
+
+            if (paramCount != argCount)
+            {
+                AddError(context.Start.Line, $"Functia '{funcName}' asteapta {paramCount} argumente, dar a primit {argCount}.");
+            }
+
+            if (currentFunction != null && funcName == currentFunction.Name)
+            {
+                currentFunction.IsRecursive = true;
+            }
+
+            return base.VisitCallStatement(context);
         }
 
-        if (currentFunction != null && funcName == currentFunction.Name)
-        {
-            currentFunction.IsRecursive = true;
-        }
-
-        return base.VisitCallStatement(context);
-    }
-
-    public override object VisitIfStatement([NotNull] GrammarParser.IfStatementContext context)
+        public override object VisitIfStatement([NotNull] GrammarParser.IfStatementContext context)
     {
         if (currentFunction != null) currentFunction.ControlStructures.Add($"if (linia {context.Start.Line})");
         return base.VisitIfStatement(context);
