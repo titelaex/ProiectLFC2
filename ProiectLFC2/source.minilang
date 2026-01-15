@@ -1,4 +1,4 @@
-// Variabile globale
+﻿// Variabile globale
 int g = 10e;
 float pi = 3.14;
 int g = 20; // Eroare: variabila globala duplicata
