@@ -1,6 +1,5 @@
 ﻿grammar Grammar;
 
-// --- SECTIUNEA 1: PARSER RULES (Persoana 2: va extinde statements si expressions) ---
 
 program
     : (declaration)* EOF
@@ -86,13 +85,13 @@ expressionList
     ;
 
 expression
-    : expression (OR) expression          # LogicalOr
-    | expression (AND) expression         # LogicalAnd
-    | expression (EQ | NEQ) expression    # Equality
+    : unaryExpression                       # Unary
+    | expression (MUL | DIV | MOD) expression # MulDivMod 
+    | expression (PLUS | MINUS) expression  # AddSub
     | expression (LT | GT | LE | GE) expression # Relational
-    | expression (PLUS | MINUS) expression # AddSub
-    | expression (MUL | DIV | MOD) expression # MulDivMod
-    | unaryExpression                     # Unary
+    | expression (EQ | NEQ) expression      # Equality
+    | expression (AND) expression           # LogicalAnd
+    | expression (OR) expression            # LogicalOr   
     ;
 
 unaryExpression
@@ -115,7 +114,6 @@ initialValue
     ;
 
 
-// --- SECTIUNEA 2: LEXER RULES (Persoana 1) ---
 
 // Cuvinte cheie 
 INT     : 'int';
@@ -189,7 +187,7 @@ STRING_LITERAL
 
 // Eroare: Șir de caractere neînchis și pe mai multe rânduri 
 UNTERMINATED_STRING 
-    : '"' ( ~["] )* ( '\n' | '\r' | EOF ) -> type(ERROR_TOKEN)
+    : '"' ( ~["\r\n] )* -> type(ERROR_TOKEN)
     ;
     
 // Spații albe și comentarii (Neglijarea lor)
@@ -203,6 +201,10 @@ LINE_COMMENT
 // Comentarii de tip bloc 
 BLOCK_COMMENT
     : '/*' .*? '*/' -> skip
+    ;
+
+UNTERMINATED_COMMENT
+    : '/*' .*? (EOF) -> type(ERROR_TOKEN)
     ;
     
 // Fragment de ajutor

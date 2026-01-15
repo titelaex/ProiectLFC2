@@ -152,7 +152,7 @@ public class SemanticVisitor : GrammarBaseVisitor<object>
                 AddError(context.Start.Line, $"Nu se poate modifica variabila constanta '{varName}'");
             }
 
-            // Verificare tip dacă este o atribuire simplă
+            // atribuire tip simpla
             if (context.expression() != null)
             {
                 string exprType = GetExpressionType(context.expression());

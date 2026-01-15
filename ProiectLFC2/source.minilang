@@ -1,10 +1,27 @@
 // Variabile globale
-int g = 10;
+int g = 10e;
 float pi = 3.14;
 int g = 20; // Eroare: variabila globala duplicata
 
+int @numar = 10; // Eroare: nume variabila invalid
+int numar = 5  //Eroare: lipsa punct si virgula
+
+string text = "Neinchis; // Eroare: sir neinchis
+
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+}
+
 // Functia main
 int main() {
+
+    int rezultat = factorial(5);
+    return rezultat;
+
     int a = 5;
     int b = 0;
     
@@ -20,11 +37,13 @@ int main() {
     // Testare erori semantice
     c = 100; // Eroare: variabila nedeclarata
     int x = "text"; // Eroare: tip incompatibil
-    
+
     return 0;
 }
 
 // Functie duplicata (Eroare)
 int main() {
     return 1;
-}
+} 
+
+/* Comentariu neinchis

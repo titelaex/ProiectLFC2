@@ -10,8 +10,6 @@ namespace ProiectLFC2
 
         public void SyntaxError(IRecognizer recognizer, int offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
         {
-            // Aici ajungem doar pentru erori fundamentale, când Lexerul nu știe ce să facă cu un caracter
-
             string errorMessage = $"Eroare lexicala critica (L{line}:{charPositionInLine}): {msg}";
 
             Console.WriteLine(errorMessage);
